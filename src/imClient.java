@@ -28,7 +28,7 @@ public class imClient extends Application{
 	private static final String LOCALHOST = "localhost";
 	private static final String LOCAL_NETWORK_ADDRESS_1 = "";
 	private static final String LOCAL_NETWORK_ADDRESS_2 = "";
-	private static final String IP_ADDRESS = "73.231.101.85";
+	private static final String IP_ADDRESS = "";
 	
 	private VBox mainBox;
 	private HBox loginBox;
