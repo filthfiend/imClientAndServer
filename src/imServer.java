@@ -165,6 +165,9 @@ public class imServer extends Application{
 			{
 				this.clientOut = new PrintWriter(socket.getOutputStream(), false);
 				Scanner in = new Scanner(socket.getInputStream());
+				//use these to try and replace with dataoutputstream.readutf()
+				//https://stackoverflow.com/questions/36895702/java-send-stringfilename-and-file-over-same-socket
+				//https://www.tutorialspoint.com/java/io/datainputstream_readutf.htm
 				while(!socket.isClosed())
 				{
 					if (socket.getInputStream().read() == -1)
@@ -242,6 +245,10 @@ public class imServer extends Application{
 									}
 								}
 							}
+						}
+						else if(actionCode == 3)
+						{
+							//take in an image object and send it to somebody
 						}
 
 					}

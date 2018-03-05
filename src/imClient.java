@@ -21,6 +21,10 @@ public class imClient extends Application{
 	
 	private ServerTask serverTask;
 	
+	private String appDataFolderString;
+	
+	private ArrayList<Friend> friendsList;
+	
 	private ArrayList<ChatWindow> chatWindows;
 	private String userName;
 	private String buddyName;
@@ -40,7 +44,9 @@ public class imClient extends Application{
 	private HBox buddyBox;
 	private Label buddyLabel;
 	private TextField buddyNameField;
+	private Button buddyButton;
 	private Button newWindowButton;
+	private VBox friendBox;
 	private FlowPane textPane;
 	private ScrollPane scrollPane;
 	private StackPane stackPane;
@@ -52,14 +58,17 @@ public class imClient extends Application{
 	private ComboBox<String> ipConfigCB;
 	
 	
-	
 	public void start(Stage primaryStage)
 	{
+		friendsList = new ArrayList<>();
 		chatWindows = new ArrayList<>();
 		System.setProperty("glass.accessible.force", "false");
-		//serverHost = "73.231.101.85";
 		serverHost = LOCALHOST;
 		userName = "";
+		appDataFolderString = System.getProperty("user.home") + "\\AppData\\Roaming\\Maim";
+		//System.out.println(appDataFolderString);
+		File appDataFolder = new File(appDataFolderString);
+		appDataFolder.mkdirs();
 		
 		
 		
@@ -81,18 +90,25 @@ public class imClient extends Application{
 		buddyBox.setAlignment(Pos.CENTER_LEFT);
 		buddyLabel = new Label("Friend: ");
 		buddyNameField = new TextField();
+		/*
 		buddyNameField.textProperty().addListener((obs, oldText, newText) -> {
 		    buddyName = newText;
 		    // ...
 		});
+		*/
+		buddyButton = new Button("Add friend to list!");
+		buddyButton.setOnAction(this::addBuddy);
+		buddyButton.setDisable(true);
 		newWindowButton = new Button("Talk to friend!");
 		newWindowButton.setOnAction(this::openChatWindow);
-		buddyBox.getChildren().addAll(buddyLabel, buddyNameField, newWindowButton);
+		newWindowButton.setDisable(true);
+		buddyBox.getChildren().addAll(buddyLabel, buddyNameField, newWindowButton, buddyButton);
 		buddyBox.setStyle("-fx-background-color: null;");
 		
 		stackPane = new StackPane();
 		stackPane.setStyle("-fx-background-color: null;");
 		
+		friendBox = new VBox();
 		chatText = new Text();
 		chatText.setStyle("-fx-background-color: null;");
 		//chatText.setFill(Color.ANTIQUEWHITE);
@@ -105,7 +121,7 @@ public class imClient extends Application{
 
 		
 		chatText.wrappingWidthProperty().bind(textPane.widthProperty());
-		textPane.getChildren().add(chatText);
+		textPane.getChildren().add(friendBox);
 		textPane.setPrefSize(480, 300);
 		
 		
@@ -134,10 +150,10 @@ public class imClient extends Application{
 
 		
 		typeText = new TextField();
-		typeText.setOnAction(this::sendMessage);
+		//typeText.setOnAction(this::sendMessage);
 		
 		sendButton = new Button("Send");
-		sendButton.setOnAction(this::sendMessage);
+		//sendButton.setOnAction(this::sendMessage);
 		
 		
 		ipConfigBox = new HBox();
@@ -161,13 +177,80 @@ public class imClient extends Application{
 		primaryStage.setOnCloseRequest(this::closeWindow);
 		primaryStage.show();
 	}
+
 	
 	public void openChatWindow(ActionEvent event)
 	{
 		
+		ChatWindow chatWindow = new ChatWindow(buddyNameField.getText().trim());
+		chatWindows.add(chatWindow);
+		chatWindow.openWindow();
+		
+	}
+	public void openChatWindowFromList(String buddyName)
+	{
 		ChatWindow chatWindow = new ChatWindow(buddyName);
 		chatWindows.add(chatWindow);
 		chatWindow.openWindow();
+	}
+	
+	
+	public void addBuddy(ActionEvent event)
+	{
+		if(!buddyNameField.getText().trim().equals(""))
+		{
+			String friendName = buddyNameField.getText().trim();
+			Friend aFriend = new Friend(friendName);
+			System.out.println("Trying to add new Friend, name: " + friendName);
+			friendsList.add(aFriend);
+			loadFriendsList();
+		}
+		buddyNameField.setText("");
+		
+	}
+	
+	public void loadFriendsList()
+	{
+		friendBox.getChildren().clear();
+		for(Friend aFriend: friendsList)
+		{
+			Text friendText = new Text();
+			friendText.setText(aFriend.getFriendName());
+			HBox friendHBox = new HBox(friendText);
+			friendHBox.setPrefWidth(450);
+			friendHBox.setOnMouseEntered
+			(
+					me -> 
+					{
+						friendHBox.setStyle("-fx-background-color: rgba(100, 100, 255, 1.0);");
+						((Text)friendHBox.getChildren().get(0)).setFill(Color.WHITE);
+
+					}
+					
+			);
+			friendHBox.setOnMouseExited
+			(
+					me -> 
+					{
+						friendHBox.setStyle("-fx-background-color: rgba(255, 255, 255, 1.0);");
+						((Text)friendHBox.getChildren().get(0)).setFill(Color.BLACK);
+
+					}
+					
+			);
+			friendHBox.setOnMouseClicked
+			(
+					me -> 
+					{
+						String friendName = ((Text)friendHBox.getChildren().get(0)).getText();
+						openChatWindowFromList(friendName);
+					}
+					
+			);
+			
+			friendBox.getChildren().add(friendHBox);
+		}
+		
 		
 	}
 	
@@ -189,6 +272,7 @@ public class imClient extends Application{
 		public ChatWindow(String friendName)
 		{
 			this.friendName = friendName;
+			
 			
 			mainChatBox = new VBox();
 			
@@ -291,14 +375,64 @@ public class imClient extends Application{
 		{
 			userNameField.setEditable(false);
 			loginButton.setDisable(true);
+			buddyButton.setDisable(false);
+			newWindowButton.setDisable(false);
 			userName = userNameField.getText().trim();
 			userNameField.setText(userName);
 			chatText.setText(chatText.getText() + "Logging in as " + userName + "\n" );
+			loadSavedFriendsList();
 			startClient();
 		}
 		
 		
 	}
+	
+	public void loadSavedFriendsList()
+	{
+		File friendListFile = new File(appDataFolderString + "\\" + userName + ".friends");
+		if (friendListFile.exists())
+		{
+			System.out.println("friendlistfile found!");
+			try
+			(
+				ObjectInputStream in = new ObjectInputStream( new FileInputStream(friendListFile));
+			)
+			{
+				System.out.println("reading friendlistfile!");
+				friendsList = (ArrayList<Friend>)in.readObject();
+			}
+			catch(IOException ex)
+			{
+				System.out.println("error reading file!");
+				ex.printStackTrace();
+			}
+			catch(ClassNotFoundException ex)
+			{
+				System.out.println("error reading file - class not found?");
+			}
+			loadFriendsList();
+		}
+	}
+	
+	public void saveFriendsList()
+	{
+		File friendListFile = new File(appDataFolderString + "\\" + userName + ".friends");
+		try
+		(
+				ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(friendListFile));
+		)
+		{
+			out.writeObject(friendsList);
+			out.close();
+		}
+		catch(IOException ex)
+		{
+			
+		}
+		
+		friendsList.clear();
+	}
+	
 	
 	public void startClient()
 	{
@@ -318,12 +452,16 @@ public class imClient extends Application{
 			chatText.setText(chatText.getText() + "Server connection failed!\n");
 			loginButton.setDisable(false);
 			userNameField.setEditable(true);
+			buddyButton.setDisable(true);
+			newWindowButton.setDisable(true);
 		}
 		catch(InterruptedException ex)
 		{
 			chatText.setText(chatText.getText() + "Server connection failed!\n");
 			loginButton.setDisable(false);
 			userNameField.setEditable(true);
+			buddyButton.setDisable(true);
+			newWindowButton.setDisable(true);
 		}
 
 	}
@@ -333,6 +471,10 @@ public class imClient extends Application{
 		serverTask.closeSocket();
 		loginButton.setDisable(false);
 		userNameField.setEditable(true);
+		buddyButton.setDisable(true);
+		newWindowButton.setDisable(true);
+		saveFriendsList();
+		loadFriendsList();
 		chatText.setText(chatText.getText() + "Logged out!\n");
 	}
 	public void closeWindow(WindowEvent event)
@@ -341,8 +483,10 @@ public class imClient extends Application{
 		{
 			serverTask.closeSocket();
 		}
+		saveFriendsList();
 	}
 	
+	/*
 	public void sendMessage(ActionEvent event)
 	{
 		if(!typeText.getText().trim().equals(""))
@@ -351,7 +495,7 @@ public class imClient extends Application{
 			
 			try 
 			{
-				serverTask.addNextMessage(typeText.getText(), buddyName);
+				serverTask.addNextMessage(typeText.getText(), buddyNameField.getText().trim());
 			} 
 			catch (NullPointerException e) 
 			{
@@ -361,6 +505,7 @@ public class imClient extends Application{
 			typeText.setText("");
 		}
 	}
+	*/
 
 	public void selectIP(ObservableValue<? extends String> ov, String oldVal, String newVal)
 	{
@@ -381,7 +526,7 @@ public class imClient extends Application{
 			serverHost = IP_ADDRESS;
 		}
 	}
-	
+
 	private class Message
 	{
 		String messageString;
@@ -538,9 +683,6 @@ public class imClient extends Application{
 									}
 								});
 							}
-							
-							
-							
 
 						}
 
@@ -581,38 +723,15 @@ public class imClient extends Application{
                     }
     			});
             }
-                    
-                    
-                
-           
-			
+
 			return null;
 		}
-		
-		
-		
-		
+
 		
 		
 	}
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		launch(args);
