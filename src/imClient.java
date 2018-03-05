@@ -337,14 +337,38 @@ public class imClient extends Application{
 					*/
 					if (serverInStream.available() > 0) {
 						System.out.println("serverInStream is receiving data");
-						if (serverIn.hasNextLine()) {
-							Platform.runLater(new Runnable() {
-								@Override
-								public void run() {
-									chatText.setText(chatText.getText() + serverIn.nextLine() + "\n");
-									//scrollPane.setVvalue(scrollPane.getVmin());
-								}
-							});
+						if (serverIn.hasNextLine()) 
+						{
+							String nextLine = serverIn.nextLine();
+							Scanner nextLineScan = new Scanner(nextLine);
+							nextLineScan.useDelimiter(":");
+							int actionCode = Integer.parseInt(nextLineScan.next());
+							if(actionCode == 1)
+							{
+								Platform.runLater(new Runnable() {
+									@Override
+									public void run() {
+										chatText.setText(chatText.getText() + nextLine.substring(2) + "\n");
+									}
+								});
+							}
+							if(actionCode == 2)//user already logged in error;
+							{
+								closeSocket();
+								loginButton.setDisable(false);
+								userNameField.setEditable(true);
+								
+								Platform.runLater(new Runnable() {
+									@Override
+									public void run() {
+										chatText.setText(chatText.getText() + nextLine.substring(2) + "\n");
+									}
+								});
+							}
+							
+							
+							
+
 						}
 
 					}

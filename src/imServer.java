@@ -172,7 +172,7 @@ public class imServer extends Application{
 						System.out.println("the socket is closing");
 						socket.close();
 					}
-					if (in.hasNextLine())
+					else if (in.hasNextLine())
 					{
 						System.out.println("Scanner has line from client");
 						String input = in.nextLine();
@@ -182,14 +182,43 @@ public class imServer extends Application{
 						int actionCode = Integer.parseInt(inputScan.next());
 						if(actionCode == 0)
 						{
-							userName = input.substring(2);
-							Platform.runLater(new Runnable() {
-			                     @Override public void run() {
-			                         info.setText(info.getText() + "User logged in as " + userName + "\n");
-			                     }
-			                });
+							String tempUserName = input.substring(2);
+							boolean userFoundOnline = false;
+							Iterator<ClientTask> clientIter = clientTasks.iterator();
+							while (clientIter.hasNext() && !userFoundOnline)
+							{
+								ClientTask thisClient = clientIter.next();
+								if (thisClient.userName.equalsIgnoreCase(tempUserName))
+								{
+									//System.out.println("other username found");
+									userFoundOnline = true;
+								}
+							}
+							if (userFoundOnline)
+							{
+								PrintWriter errorOut = this.clientOut;
+								if (errorOut != null)
+								{
+									errorOut.write("2:You are already logged in on another client!\n");
+									errorOut.flush();
+									System.out.println("Error message sent to client");
+								}
+							}
+							else
+							{
+								userName = tempUserName;
+								Platform.runLater(new Runnable() {
+				                     @Override public void run() {
+				                         info.setText(info.getText() + "User logged in as " + userName + "\n");
+				                     }
+				                });
+							}
+							
+							
+							
+
 						}
-						if(actionCode == 1)
+						else if(actionCode == 1)
 						{
 							System.out.println("Actioncode 1 recognized");
 							String buddyName = inputScan.next();
@@ -198,7 +227,7 @@ public class imServer extends Application{
 								PrintWriter clientOutput = aClient.clientOut;
 								if (clientOutput != null && (aClient.userName.equalsIgnoreCase(buddyName) || aClient.userName.equalsIgnoreCase(userName)))
 								{
-									clientOutput.write(input.substring(3 + buddyName.length()) + "\r\n");
+									clientOutput.write("1:" + input.substring(3 + buddyName.length()) + "\r\n");
 									clientOutput.flush();
 									System.out.println("Message sent to client");
 								}
