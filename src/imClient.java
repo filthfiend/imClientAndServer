@@ -21,6 +21,7 @@ public class imClient extends Application{
 	
 	private ServerTask serverTask;
 	
+	private ArrayList<ChatWindow> chatWindows;
 	private String userName;
 	private String buddyName;
 	private String serverHost;
@@ -39,7 +40,7 @@ public class imClient extends Application{
 	private HBox buddyBox;
 	private Label buddyLabel;
 	private TextField buddyNameField;
-	private Button buddyButton;
+	private Button newWindowButton;
 	private FlowPane textPane;
 	private ScrollPane scrollPane;
 	private StackPane stackPane;
@@ -54,6 +55,7 @@ public class imClient extends Application{
 	
 	public void start(Stage primaryStage)
 	{
+		chatWindows = new ArrayList<>();
 		System.setProperty("glass.accessible.force", "false");
 		//serverHost = "73.231.101.85";
 		serverHost = LOCALHOST;
@@ -83,7 +85,9 @@ public class imClient extends Application{
 		    buddyName = newText;
 		    // ...
 		});
-		buddyBox.getChildren().addAll(buddyLabel, buddyNameField);
+		newWindowButton = new Button("Talk to friend!");
+		newWindowButton.setOnAction(this::openChatWindow);
+		buddyBox.getChildren().addAll(buddyLabel, buddyNameField, newWindowButton);
 		buddyBox.setStyle("-fx-background-color: null;");
 		
 		stackPane = new StackPane();
@@ -143,9 +147,11 @@ public class imClient extends Application{
 		ipConfigCB.getItems().addAll("My PC", "Network 1", "Network 2", "Internet");
 		ipConfigCB.getSelectionModel().selectFirst();
 		ipConfigCB.getSelectionModel().selectedItemProperty().addListener(this::selectIP);
+		
+
 		ipConfigBox.getChildren().addAll(ipConfigLabel, ipConfigCB);
 		
-		mainBox.getChildren().addAll(loginBox, buddyBox, stackPane, typeText, sendButton, ipConfigBox);
+		mainBox.getChildren().addAll(loginBox, buddyBox, stackPane, ipConfigBox);
 		
 		Scene scene = new Scene(mainBox, 500, 470, Color.ALICEBLUE);
 		scene.getStylesheets().add("scrollBarFix.css");
@@ -154,6 +160,126 @@ public class imClient extends Application{
 		primaryStage.setScene(scene);
 		primaryStage.setOnCloseRequest(this::closeWindow);
 		primaryStage.show();
+	}
+	
+	public void openChatWindow(ActionEvent event)
+	{
+		
+		ChatWindow chatWindow = new ChatWindow(buddyName);
+		chatWindows.add(chatWindow);
+		chatWindow.openWindow();
+		
+	}
+	
+	public class ChatWindow 
+	{
+		private String friendName;
+		private VBox mainChatBox;
+		
+		private FlowPane textPane;
+		private ScrollPane scrollPane;
+		private StackPane stackPane;
+		private Text chatText;
+		
+		private TextField typeText;
+		
+		private Scene chatScene;
+		private Stage chatStage;
+		
+		public ChatWindow(String friendName)
+		{
+			this.friendName = friendName;
+			
+			mainChatBox = new VBox();
+			
+			stackPane = new StackPane();
+			stackPane.setStyle("-fx-background-color: null;");
+			
+			chatText = new Text();
+			chatText.setStyle("-fx-background-color: null;");
+			//chatText.setFill(Color.ANTIQUEWHITE);
+			//chatText.setStroke(Color.ANTIQUEWHITE);
+			//chatText.setFont(Font.font("Fartz", FontWeight.BOLD, 20));
+			textPane = new FlowPane();
+			textPane.setStyle("-fx-background-color: null;");
+			scrollPane = new ScrollPane();
+			scrollPane.setStyle("-fx-background: transparent;");
+
+			
+			chatText.wrappingWidthProperty().bind(textPane.widthProperty());
+			textPane.getChildren().add(chatText);
+			textPane.setPrefSize(480, 300);
+			
+			
+			scrollPane.setContent(textPane);
+			scrollPane.vvalueProperty().bind(textPane.heightProperty());
+			
+			//Image image = new Image( "resources/" , 500, 500, true, true);
+			ImageView imageView = new ImageView();
+			
+			
+			imageView.setViewport(new Rectangle2D(0, 0, 500, 300));
+			imageView.setPreserveRatio(true);
+			
+			FlowPane screenPane = new FlowPane();
+			screenPane.setMinSize(500, 300);
+			screenPane.setOpacity(50);
+			screenPane.setStyle("-fx-background-color: rgba(255, 255, 255, 1.0);");
+
+
+
+			//imageView.setClip(clippingPane);
+			stackPane.setPrefHeight(302);
+			stackPane.setMaxHeight(302);
+			
+			stackPane.getChildren().addAll(imageView, screenPane, scrollPane);
+
+			typeText = new TextField();
+			typeText.setOnAction(this::sendMessage);
+			
+			
+			
+			
+			mainChatBox.getChildren().addAll(stackPane, typeText);
+			
+			chatScene = new Scene(mainChatBox, 500, 400);
+			chatScene.getStylesheets().add("scrollBarFix.css");
+			
+			chatStage = new Stage();
+			chatStage.setTitle("Now Maiming " + friendName );
+			chatStage.setScene(chatScene);
+		}
+		
+		public String getFriendName()
+		{
+			return friendName;
+		}
+		
+		public void openWindow()
+		{
+			chatStage.show();
+		}
+		
+		public void sendMessage(ActionEvent event)
+		{
+			if(!typeText.getText().trim().equals(""))
+			{
+				//chatText.setText(chatText.getText() + "Trying to send message\n");
+				
+				try 
+				{
+					serverTask.addNextMessage(typeText.getText(), friendName);
+				} 
+				catch (NullPointerException e) 
+				{
+					chatText.setText(chatText.getText() + "You're not logged in, dummy!\n");
+				}
+						
+				typeText.setText("");
+			}
+		}
+		
+		
 	}
 	
 	
@@ -225,7 +351,7 @@ public class imClient extends Application{
 			
 			try 
 			{
-				serverTask.addNextMessage(typeText.getText());
+				serverTask.addNextMessage(typeText.getText(), buddyName);
 			} 
 			catch (NullPointerException e) 
 			{
@@ -256,28 +382,49 @@ public class imClient extends Application{
 		}
 	}
 	
+	private class Message
+	{
+		String messageString;
+		String friendName;
+		public Message(String messageString, String friendName)
+		{
+			this.messageString = messageString;
+			this.friendName = friendName;
+		}
+		public String getFriendName()
+		{
+			return friendName;
+		}
+		public String getMessageString()
+		{
+			return messageString;
+		}
+	}
+	
 	
 	private class ServerTask extends Task<Void>
 	{
 		private Socket socket;
-		private LinkedList<String> messagesToSend;
+		private LinkedList<Message> messagesToSend;
 		private boolean hasMessages;
 		
 		public ServerTask(Socket socket)
 		{
 			this.socket = socket;
-			messagesToSend = new LinkedList<String>();
+			messagesToSend = new LinkedList<Message>();
 			hasMessages = false;
 		}
 		
-		public void addNextMessage(String message)
+		public void addNextMessage(String messageString, String friendName)
 		{
+			Message newMessage = new Message(messageString, friendName);
+			
 			System.out.println("addNextMessage() is doing something");
 			synchronized(messagesToSend){
 				System.out.println("synchronized(messagesToSend) is doing something");
 				hasMessages = true;
-				messagesToSend.push(message);
-				System.out.println( "\"" + messagesToSend.peek() + "\"" + "added to LinkedList");
+				messagesToSend.push(newMessage);
+				System.out.println( "\"" + messagesToSend.peek().getMessageString() + "\"" + "added to LinkedList");
 				
 			}
 		}
@@ -345,12 +492,38 @@ public class imClient extends Application{
 							int actionCode = Integer.parseInt(nextLineScan.next());
 							if(actionCode == 1)
 							{
-								Platform.runLater(new Runnable() {
-									@Override
-									public void run() {
-										chatText.setText(chatText.getText() + nextLine.substring(2) + "\n");
+								String messageFriend = nextLineScan.next();
+								boolean friendWindowFound = false;
+								for(ChatWindow chatWindow: chatWindows)
+								{
+									if (chatWindow.getFriendName().equals(messageFriend))
+									{
+										System.out.println("Friend window found!");
+										friendWindowFound = true;
+										Platform.runLater(new Runnable() {
+											@Override
+											public void run() {
+												chatWindow.chatText.setText(chatWindow.chatText.getText() + nextLine.substring(3 + messageFriend.length()) + "\n");
+											}
+										});
 									}
-								});
+								}
+								if (!friendWindowFound)
+								{
+									System.out.println("No friend window found! Trying to open new window!");
+
+									Platform.runLater(new Runnable() {
+										@Override
+										public void run() {
+											ChatWindow chatWindow = new ChatWindow(messageFriend);
+											chatWindows.add(chatWindow);
+											chatWindow.openWindow();
+											chatWindow.chatText.setText(chatWindow.chatText.getText() + nextLine.substring(3 + messageFriend.length()) + "\n");
+										}
+									});
+								}
+								
+								
 							}
 							if(actionCode == 2)//user already logged in error;
 							{
@@ -376,7 +549,8 @@ public class imClient extends Application{
 						System.out.println("Messages being sent");
 						String nextSend = "";
 						synchronized (messagesToSend) {
-							nextSend = "01:" + buddyName + ":" + userName + ": " + messagesToSend.pop();
+							Message messageToSend = messagesToSend.pop();
+							nextSend = "01:" + messageToSend.getFriendName() + ":" + userName + ": " + messageToSend.getMessageString();
 							hasMessages = !messagesToSend.isEmpty();
 							System.out.println("Second synchronized(messagesToSend) is doing stuff");
 						}

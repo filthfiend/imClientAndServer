@@ -171,6 +171,7 @@ public class imServer extends Application{
 					{
 						System.out.println("the socket is closing");
 						socket.close();
+						clientTasks.remove(this);
 					}
 					else if (in.hasNextLine())
 					{
@@ -227,9 +228,18 @@ public class imServer extends Application{
 								PrintWriter clientOutput = aClient.clientOut;
 								if (clientOutput != null && (aClient.userName.equalsIgnoreCase(buddyName) || aClient.userName.equalsIgnoreCase(userName)))
 								{
-									clientOutput.write("1:" + input.substring(3 + buddyName.length()) + "\r\n");
-									clientOutput.flush();
-									System.out.println("Message sent to client");
+									if(aClient.userName.equalsIgnoreCase(buddyName))
+									{
+										clientOutput.write("1:" + userName + ":" + input.substring(3 + buddyName.length()) + "\r\n");
+										clientOutput.flush();
+										System.out.println("Message sent to client");
+									}
+									else if(aClient.userName.equalsIgnoreCase(userName))
+									{
+										clientOutput.write("1:" + input.substring(2) + "\r\n");
+										clientOutput.flush();
+										System.out.println("Message sent to client");
+									}
 								}
 							}
 						}
